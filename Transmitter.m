@@ -1,10 +1,8 @@
-
 M = 4; % Modulation order
 bit_per_symbol = log2(M); % Bits coded per symbol
 
-N = 2000; % Number of Sent Symbols 
+N = 200; % Number of Sent Symbols 
 bitstream = randi([0 1],bit_per_symbol,N); %First row is the LSB 
-
 
 oversampling_rate = 8; % Pulse Shaping Oversampling Rate
 
@@ -22,21 +20,29 @@ txfilter = rcosdesign(0.55,10,8,"sqrt");
 
 x=conv(signals,txfilter,"same"); % Transmitted Waveform
 
-IF_frequency=5*1e3;
+IF_frequency=1.3;
 fs=3*IF_frequency;
 Ts=1/fs;
+% time_vector=0:Ts:((Ts)*(length(x)-1))+1;
+time_vector=0:length(x)-1;
 
-time_vector=1:Ts:((Ts)*(length(x)-1))+1;
-IF_signal=x.*cos(2*pi*IF_frequency*time_vector);
+% IF_signal=x.*cos(2*pi*IF_frequency*time_vector);
+IF_signal=x.*exp(-1i*2*pi*IF_frequency*time_vector);
 
-spectrum_baseband=fft(x);
-spectrum_IF=fft(IF_signal);
-frequency_vector=linspace(0,fs,length(spectrum_baseband));
-
+% spectrum_baseband=fft(x);
+% spectrum_IF=fft(IF_signal);
+% frequency_vector=linspace(0,length(x),length(spectrum_baseband));
+% 
+% figure(1)
+% plot(abs(spectrum_baseband))
+% 
+% figure(2)
+% plot(abs(spectrum_IF))
 
 tx=comm.SDRuTransmitter("Platform","B200", ...
-    "CenterFrequency",400*1e6,"SerialNum","31FD9BD","Gain",20);
+    "CenterFrequency",400*1e6,"SerialNum","31FD9A5","Gain",45);
 for i=1:1:1000
-tx(transpose(x_c));
+    tx(transpose(IF_signal));
 end
 
+release(tx);
