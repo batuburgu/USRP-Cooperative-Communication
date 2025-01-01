@@ -4,7 +4,6 @@
 
 function [freq_sync_signal] = coarse_carrier_sync(data,masterclock,decimation)
 x_power_4 = data.^4;
-scatterplot(data)
 
 x_fft=fftshift(fft(x_power_4));
 [~,index]=max(abs(x_fft));
