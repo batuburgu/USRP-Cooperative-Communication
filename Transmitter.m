@@ -18,7 +18,7 @@ signals=upsample(signals,oversampling_rate);
 
 txfilter = rcosdesign(0.55,10,8,"sqrt");
 
-x=conv(signals,txfilter,"same"); % Transmitted Waveform
+x=conv(signals,txfilter); % Transmitted Waveform
 
 IF_frequency=1.3;
 fs=3*IF_frequency;
