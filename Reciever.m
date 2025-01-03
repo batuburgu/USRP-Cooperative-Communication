@@ -52,36 +52,49 @@ plot(abs(cross_corr))
 
 fh_indices = find(abs(cross_corr) > 0.3);
 
-% Extracting Meaningful Data from Package
-meaningful_data = signal(fh_indices(4) + 11: fh_indices(4) + 210);
+% Frame and Phase Sync
+ser = ones(1,length(fh_indices) - 1);
+for i=1:length(fh_indices)-1
 
-% Frame Sync
-parity_phase_shift_sum = 0;
-meaningful_data_first_parities = signal(fh_indices(4) + 1: fh_indices(4) + 10);
-for i=1:2:10
-%parity_phase_shift_sum = parity_phase_shift_sum + atan(imag(meaningful_data_first_parities(i))/real(meaningful_data_first_parities(i)));
-parity_phase_shift_sum = parity_phase_shift_sum + atan2(imag(meaningful_data_first_parities(i)),real(meaningful_data_first_parities(i)));
+    % Extracting Meaningful Data from Package
+    information_data = signal(fh_indices(i) + 11: fh_indices(i) + 210);
+
+    % Frame Sync
+    parity_phase_shift_sum = 0;
+    first_parities = signal(fh_indices(4) + 1: fh_indices(4) + 10);
+    
+    % Channel Estimation
+    parity_amp_avg = sum(abs(first_parities)) / length(first_parities);
+    for j=1:2:10
+        %parity_phase_shift_sum = parity_phase_shift_sum + atan(imag(first_parities(j))/real(first_parities(j)));
+        parity_phase_shift_sum = parity_phase_shift_sum + atan2(imag(first_parities(j)),real(first_parities(j)));
+        
+    end
+    parity_phase_shift_mean = (parity_phase_shift_sum/5);
+
+    channel = parity_amp_avg * exp(-1i * parity_phase_shift_mean);
+
+    % Phase Shift
+    information_data = information_data .* exp(-1i * parity_phase_shift_mean);
+    %information_data = information_data .* exp(-1i * pi); % for atan function
+    information_data = transpose(information_data);
+
+    % Decision Making
+    cond1 = real(information_data) > 0 & imag(information_data) > 0; % 0;0
+    cond2 = real(information_data) < 0 & imag(information_data) > 0; % 0;1
+    cond3 = real(information_data) < 0 & imag(information_data) < 0; % 1;0
+    cond4 = real(information_data) > 0 & imag(information_data) < 0; % 1;1
+    
+    decision = zeros(2,200);
+    
+    decision(:, cond1) = repmat([0; 0], 1, sum(cond1(:)));
+    decision(:, cond2) = repmat([0; 1], 1, sum(cond2(:)));
+    decision(:, cond3) = repmat([1; 0], 1, sum(cond3(:)));
+    decision(:, cond4) = repmat([1; 1], 1, sum(cond4(:)));
+    
+    bit1_err = bitstream(1,:) ~= decision(1,:);
+    bit2_err = bitstream(2,:) ~= decision(2,:);
+    
+    ser(i) = sum(bit1_err | bit2_err) / length(bitstream);
+
 end
-parity_phase_shift_mean = (parity_phase_shift_sum/5);
-
-meaningful_data = meaningful_data .* exp(-1i * parity_phase_shift_mean);
-%meaningful_data = meaningful_data .* exp(-1i * pi); % for atan function
-meaningful_data = transpose(meaningful_data);
-
-% Decision Making
-cond1 = real(meaningful_data) > 0 & imag(meaningful_data) > 0; % 0;0
-cond2 = real(meaningful_data) < 0 & imag(meaningful_data) > 0; % 0;1
-cond3 = real(meaningful_data) < 0 & imag(meaningful_data) < 0; % 1;0
-cond4 = real(meaningful_data) > 0 & imag(meaningful_data) < 0; % 1;1
-
-decision = zeros(2,200);
-
-decision(:, cond1) = repmat([0; 0], 1, sum(cond1(:)));
-decision(:, cond2) = repmat([0; 1], 1, sum(cond2(:)));
-decision(:, cond3) = repmat([1; 0], 1, sum(cond3(:)));
-decision(:, cond4) = repmat([1; 1], 1, sum(cond4(:)));
-
-bit1_err = bitstream(1,:) ~= decision(1,:);
-bit2_err = bitstream(2,:) ~= decision(2,:);
-
-ser = sum(bit1_err | bit2_err) / length(bitstream);
