@@ -30,7 +30,6 @@ parity_bit_stream = repmat([1, -1], 1, 5);
 signals = exp(1j*((2*pi*index/M)+pi/4)); % MPSK Signal Stream 
 
 data = [zero_bit_stream, empty_bit_stream, frame_header_stream, parity_bit_stream, signals, parity_bit_stream, zero_bit_stream];
-%data = signals;
 
 autocorr=xcorr(frame_header_stream, data(end:-1:1) );
 plot(abs(autocorr))
@@ -39,14 +38,12 @@ upsampled_data = upsample(data,oversampling_rate);
 
 txfilter = rcosdesign(0.55,10,8,"sqrt");
 
-x=conv(upsampled_data,txfilter,"same"); % Transmitted Waveform
+x=conv(upsampled_data,txfilter); % Transmitted Waveform
 IF_frequency=1.3;
 fs=3*IF_frequency;
 Ts=1/fs;
-% time_vector=0:Ts:((Ts)*(length(x)-1))+1;
 time_vector=0:length(x)-1;
 
-% IF_signal=x.*cos(2*pi*IF_frequency*time_vector);
 IF_signal=x.*exp(-1i*2*pi*IF_frequency*time_vector);
 
 % spectrum_baseband=fft(x);
@@ -60,7 +57,7 @@ IF_signal=x.*exp(-1i*2*pi*IF_frequency*time_vector);
 % plot(abs(spectrum_IF))
 
 tx=comm.SDRuTransmitter("Platform","B200", ...
-    "CenterFrequency",400*1e6,"SerialNum","31FD9A5","Gain",45);
+    "CenterFrequency",400*1e6,"SerialNum","31FD9A5","Gain",20);
 
 % Transmit The Signal 1000 Times
 for i=1:1:1000
