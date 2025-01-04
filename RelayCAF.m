@@ -74,6 +74,8 @@ for i=2:length(fh_indices)-1
     parity_phase_shift_mean = (parity_phase_shift_sum/5);
     frame = frame .* exp(-1i * parity_phase_shift_mean);
 
+    frame(fh_indices(i) + 1) = 1;
+
     % Forward
     oversampling_rate = 8; 
     upsampled_data = upsample(transpose(amplified_frame),oversampling_rate);
