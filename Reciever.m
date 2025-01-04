@@ -50,7 +50,7 @@ frame_header = exp(-1i*pi*u.*n.*(n + cf + 2*q) / N_zc); % Zadoff Chu Sequence as
 cross_corr = xcorr(frame_header, signal(end:-1:1));
 plot(abs(cross_corr))
 
-fh_indices = find(abs(cross_corr) > 0.3);
+fh_indices = find(abs(cross_corr) > mean(abs(cross_corr)));
 
 % Frame and Phase Sync
 ser = ones(1,length(fh_indices) - 1);
@@ -61,7 +61,7 @@ for i=1:length(fh_indices)-1
 
     % Frame Sync
     parity_phase_shift_sum = 0;
-    first_parities = signal(fh_indices(4) + 1: fh_indices(4) + 10);
+    first_parities = signal(fh_indices(i) + 1: fh_indices(i) + 10);
     
     % Channel Estimation
     parity_amp_avg = sum(abs(first_parities)) / length(first_parities);
