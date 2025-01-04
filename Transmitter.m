@@ -29,22 +29,14 @@ parity_bit_stream = repmat([1, -1], 1, 5);
 % Modulated Data
 signals = exp(1j*((2*pi*index/M)+pi/4)); % MPSK Signal Stream 
 
-data = [zero_bit_stream, empty_bit_stream, frame_header_stream, parity_bit_stream, signals, parity_bit_stream, zero_bit_stream];
-
-autocorr=xcorr(frame_header_stream, data(end:-1:1) );
-plot(abs(autocorr))
-% Pulse Shaping
-upsampled_data = upsample(data,oversampling_rate);
-
-txfilter = rcosdesign(0.55,10,8,"sqrt");
-
-x=conv(upsampled_data,txfilter); % Transmitted Waveform
 IF_frequency=1.3;
 fs=3*IF_frequency;
 Ts=1/fs;
-time_vector=0:length(x)-1;
 
-IF_signal=x.*exp(-1i*2*pi*IF_frequency*time_vector);
+% autocorr=xcorr(frame_header_stream, data(end:-1:1) );
+% plot(abs(autocorr))
+% Pulse Shaping
+
 
 % spectrum_baseband=fft(x);
 % spectrum_IF=fft(IF_signal);
@@ -56,11 +48,27 @@ IF_signal=x.*exp(-1i*2*pi*IF_frequency*time_vector);
 % figure(2)
 % plot(abs(spectrum_IF))
 
-tx=comm.SDRuTransmitter("Platform","B200", ...
-    "CenterFrequency",400*1e6,"SerialNum","31FD9A5","Gain",20);
+% tx=comm.SDRuTransmitter("Platform","B200", ...
+%     "CenterFrequency",400*1e6,"SerialNum","31FD9A5","Gain",20);
 
-% Transmit The Signal 1000 Times
-for i=1:1:1000
+% Transmit 31 Frames of Same BitStream
+for i=0:1:31
+    % Bit Stream 
+    frame_number_stream = zeros(1,6);
+    decimal_in_bits = int2bit(i,5);
+    frame_number_stream(end - length(decimal_in_bits) + 1: end) = decimal_in_bits;
+
+    data = [zero_bit_stream, empty_bit_stream, frame_header_stream, frame_number_stream, parity_bit_stream, signals, parity_bit_stream, zero_bit_stream];
+
+    upsampled_data = upsample(data,oversampling_rate);
+
+    txfilter = rcosdesign(0.55,10,8,"sqrt");
+
+    x=conv(upsampled_data,txfilter); % Transmitted Waveform
+
+    time_vector=0:length(x)-1;
+    IF_signal=x.*exp(-1i*2*pi*IF_frequency*time_vector);
+    
     tx(transpose(IF_signal));
 end
 
