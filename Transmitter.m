@@ -1,7 +1,7 @@
 M = 4; % Modulation order
 bit_per_symbol = log2(M); % Bits coded per symbol
 
-N = 200; % Number of Sent Symbols 
+N = 512; % Number of Sent Symbols 
 
 % Frame Header Arguments
 N_zc = 63; % Length of Zadoff Chu
@@ -33,32 +33,12 @@ IF_frequency=1.3;
 fs=3*IF_frequency;
 Ts=1/fs;
 
-% autocorr=xcorr(frame_header_stream, data(end:-1:1) );
-% plot(abs(autocorr))
-% Pulse Shaping
+tx=comm.SDRuTransmitter("Platform","B200", ...
+    "CenterFrequency",400*1e6,"SerialNum","31FD9BD","Gain",45);
 
+for i = 1:1000
 
-% spectrum_baseband=fft(x);
-% spectrum_IF=fft(IF_signal);
-% frequency_vector=linspace(0,length(x),length(spectrum_baseband));
-% 
-% figure(1)
-% plot(abs(spectrum_baseband))
-% 
-% figure(2)
-% plot(abs(spectrum_IF))
-
-% tx=comm.SDRuTransmitter("Platform","B200", ...
-%     "CenterFrequency",400*1e6,"SerialNum","31FD9A5","Gain",20);
-
-% Transmit 31 Frames of Same BitStream
-for i=0:1:31
-    % Bit Stream 
-    frame_number_stream = zeros(1,6);
-    decimal_in_bits = int2bit(i,5);
-    frame_number_stream(end - length(decimal_in_bits) + 1: end) = decimal_in_bits;
-
-    data = [zero_bit_stream, empty_bit_stream, frame_header_stream, frame_number_stream, parity_bit_stream, signals, parity_bit_stream, zero_bit_stream];
+    data = [zero_bit_stream, empty_bit_stream, frame_header_stream, parity_bit_stream, signals, parity_bit_stream, zero_bit_stream];
 
     upsampled_data = upsample(data,oversampling_rate);
 
@@ -71,5 +51,5 @@ for i=0:1:31
     
     tx(transpose(IF_signal));
 end
-
+    
 release(tx);

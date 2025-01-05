@@ -53,19 +53,15 @@ cross_corr = xcorr(frame_header, signal(end:-1:1));
 plot(abs(cross_corr))
 fh_indices = find(abs(cross_corr) > (10*mean(abs(cross_corr))));
 
-%% CAF Process
+%% CDF Process
 
 tx=comm.SDRuTransmitter("Platform","B200", ...
     "CenterFrequency",400*1e6,"SerialNum","31FD9C2","Gain",45);
 
 for i=2:length(fh_indices)-1  
     
-    % Amplification
-    first_parities = signal(fh_indices(i) + 1: fh_indices(i) + 10);
-    last_parities = signal(fh_indices(i) + 523: fh_indices(i) + 532);
-    parities_amp_avg = ((sum(abs(first_parities)) + sum(abs(last_parities))) / (length(first_parities) + length(last_parities)));
-    frame = signal(fh_indices(i) - 104: fh_indices(i) + 542);
-    amplified_frame = (frame ./ parities_amp_avg);
+    % Decoding
+    first_parities = signal(fh_indices(i) + 1: fh_indices(i) + 10);   
     
     % Phase Sync
     parity_phase_shift_sum = 0;
@@ -73,11 +69,53 @@ for i=2:length(fh_indices)-1
         parity_phase_shift_sum = parity_phase_shift_sum + atan2(imag(first_parities(j)),real(first_parities(j)));
     end
     parity_phase_shift_mean = (parity_phase_shift_sum/5);
-    frame = frame .* exp(-1i * parity_phase_shift_mean);
+
+    information_data = signal(fh_indices(i) + 11: fh_indices(i) + 522);
+
+    % Phase Shift
+    information_data = information_data .* exp(-1i * parity_phase_shift_mean);
+    %information_data = information_data .* exp(-1i * pi); % for atan function
+    information_data = transpose(information_data);
+
+    scatterplot(information_data)
+
+    % Decision Making
+    cond1 = real(information_data) > 0 & imag(information_data) > 0; % 0;0
+    cond2 = real(information_data) < 0 & imag(information_data) > 0; % 0;1
+    cond3 = real(information_data) < 0 & imag(information_data) < 0; % 1;0
+    cond4 = real(information_data) > 0 & imag(information_data) < 0; % 1;1
+    
+    decision = zeros(2,512);
+    
+    decision(:, cond1) = repmat([0; 0], 1, sum(cond1(:)));
+    decision(:, cond2) = repmat([0; 1], 1, sum(cond2(:)));
+    decision(:, cond3) = repmat([1; 0], 1, sum(cond3(:)));
+    decision(:, cond4) = repmat([1; 1], 1, sum(cond4(:)));
+    
+    %retransmission
+    M = 4; % Modulation order
+    bit_per_symbol = log2(M);
+    
+    power_of_twos = 0:1:bit_per_symbol-1; % Decimal Value of Bits
+    
+    decimal_values = 2.^flip(power_of_twos); % Decimal Value of Bit Stack
+    index = decimal_values * decision; % Bitstream as Symbol Indexes
+    
+    % Data Package
+    zero_bit_stream = zeros(1,10);
+    empty_bit_stream = repmat([1, -1], 1, 16);
+    
+    frame_header_stream = exp(-1i*pi*u.*n.*(n + cf + 2*q) / N_zc); % Zadoff Chu Sequence as Frame Header
+    
+    parity_bit_stream = repmat([1, -1], 1, 5);
+    
+    signals = exp(1j*((2*pi*index/M)+pi/4)); % MPSK Signal Stream     
+
+    data = [zero_bit_stream, empty_bit_stream, frame_header_stream, parity_bit_stream, signals, parity_bit_stream, zero_bit_stream];
 
     % Forward
     oversampling_rate = 8; 
-    upsampled_data = upsample(transpose(amplified_frame),oversampling_rate);
+    upsampled_data = upsample(transpose(data),oversampling_rate);
     
     txfilter = rcosdesign(0.55,10,8,"sqrt");
     
@@ -87,7 +125,7 @@ for i=2:length(fh_indices)-1
     Ts=1/fs;
     time_vector=0:length(x)-1;
   
-    IF_signal=x.*exp(-1i*2*pi*IF_frequency*time_vector);
+    IF_signal=transpose(x).*exp(-1i*2*pi*IF_frequency*time_vector);
     
     for k=1:1:400
     tx(transpose(IF_signal));
