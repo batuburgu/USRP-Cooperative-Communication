@@ -7,16 +7,16 @@ function [error]= error_calculation(complex_number)
 
 
     if(real(complex_number)>0)
-        a=sqrt(2);
+        a=sqrt(2)/2;
     else
-        a=-sqrt(2);
+        a=-sqrt(2)/2;
     end
 
 
     if(imag(complex_number)>0)
-        b=sqrt(2);
+        b=sqrt(2)/2;
     else
-        b=-sqrt(2);
+        b=-sqrt(2)/2;
     end
 
     error=a*imag(complex_number)-b*real(complex_number);
